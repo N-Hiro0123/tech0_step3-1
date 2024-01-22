@@ -6,30 +6,13 @@ from tqdm import tqdm   #for文の進捗を確認
 #セットアップ
 tqdm.pandas()  
 
-# googleスプレッドシートの編集
-import gspread
-from oauth2client.service_account import ServiceAccountCredentials
-import json
-
-# 地図表示するために緯度、経度情報も取得しておく
+# 地図表示するために緯度、経度情報を取得
 import requests
 import urllib
 
 # SQLiteを実施
 import sqlite3
 
-# 環境変数の設定
-import os
-from dotenv import load_dotenv
-
-load_dotenv('.env')
-SP_CREDENTIAL_FILE = os.getenv('SP_CREDENTIAL_FILE')
-SP_COPE = [
-    'https://www.googleapis.com/auth/drive',
-    'https://spreadsheets.google.com/feeds'
-]
-SP_SHEET_KEY = os.getenv('SP_SHEET_KEY')
-SP_SHEET = 'meguro_2K2DK2LDK'
 
 
 def scraping_suumo(load_url: str) -> pd.DataFrame:
@@ -55,8 +38,8 @@ def scraping_suumo(load_url: str) -> pd.DataFrame:
     rental_property_datas = pd.DataFrame(columns=["名前", "住所", "最寄り駅１","最寄り駅２","最寄り駅３", "築年数", "建物全体の階数", "階数", "賃料", "管理費", "敷金", "礼金", "間取り", "面積", "URL" ])
     
     print("suumo scraping")
-    # for p in tqdm(range(num_of_pages)):
-    for p in tqdm(range(2)):  # テストの際に使用
+    for p in tqdm(range(num_of_pages)):
+    # for p in tqdm(range(2)):  # テストの際に使用
 
         # topのページは"&page=1"を付けても開ける
         page_url = load_url + "&page=" + str(p+1)
@@ -332,10 +315,6 @@ def main():
     
     for i in range(len(df_DB_list)):
 
-        print(df_DB_list["load_url"][i])
-        print(df_DB_list["dbname"][i])
-        print(df_DB_list["tablename"][i])
-        
         df_scraping = scraping_suumo(df_DB_list["load_url"][i])  # スクレイピング
         df_cleansing = cleansing_suumo(df_scraping)  # クレンジング
         df_cleansing = add_logitude_and_latitude(df_cleansing)  # 緯度・経度の追加
