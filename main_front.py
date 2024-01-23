@@ -160,81 +160,110 @@ def display_map(filtered_df: pd.DataFrame, displayed_df: pd.DataFrame, selected_
     
     return
 
-#<条件設定> キーワード・ソースのデフォルト値を設定
-if 'set_madori' not in st.session_state:
-    st.session_state.set_madori = "2LDK"
-    st.session_state.set_erea = "目黒区"
-    st.session_state.rent_lower_and_upper_limits = (20.0, 30.0)
-    st.session_state.display_number = "10件"
-    st.session_state.filtered_df = pd.DataFrame()
-    st.session_state.search_button_is_not_pushed = True  # 検索ボタンを一度でも押せばFalseになる
+def main():
 
-st.title("賃貸検索アプリ")
-st.session_state.set_madori = st.sidebar.multiselect("間取りを選択", set_madori_list.keys(), st.session_state.set_madori)
-st.session_state.set_erea = st.sidebar.multiselect("エリアを選択", set_erea_list.keys(), st.session_state.set_erea)
-st.session_state.rent_lower_and_upper_limits = st.sidebar.slider("価格範囲を指定してください[万円]", 0.0, 50.0, st.session_state.rent_lower_and_upper_limits)
+    #デフォルト値の設定
+    if 'set_madori' not in st.session_state:
+        st.session_state.set_madori = "2LDK"
+        st.session_state.set_erea = "目黒区"
+        st.session_state.rent_lower_and_upper_limits = (20.0, 30.0)
+        st.session_state.display_number = "10件"
+        st.session_state.filtered_df = pd.DataFrame()
+        st.session_state.search_button_is_not_pushed = True  # 検索ボタンを一度でも押せばFalseになる
 
-# keyのリストをvalueのリストに変換する
-set_madori_value = []
-for i in range(len(st.session_state.set_madori)):
-    set_madori_value.append(set_madori_list[st.session_state.set_madori[i]])
-
-
-# DBの読み込み
-df_read = read_db(dbname, st.session_state.set_erea)
-
-# 検索ボタンを押したときのみ
-if st.sidebar.button("検索", type="primary"):
-    # 指定した条件のデータを抽出する
-    st.session_state.filtered_df = filter_df(df_read, set_madori_value, st.session_state.rent_lower_and_upper_limits)
+    st.title("賃貸検索アプリ")
     
-    st.session_state.search_button_is_not_pushed = False
+    # サイドバー　検索条件
+    st.sidebar.subheader("検索条件")
+    st.session_state.set_erea = st.sidebar.multiselect("エリアを選択※必須", set_erea_list.keys(), st.session_state.set_erea)
+    st.session_state.set_madori = st.sidebar.multiselect("間取りを選択", set_madori_list.keys(), st.session_state.set_madori)
+    st.session_state.rent_lower_and_upper_limits = st.sidebar.slider("価格範囲を指定してください[万円]", 0.0, 50.0, st.session_state.rent_lower_and_upper_limits)
+
+    # keyのリストをvalueのリストに変換する
+    set_madori_value = []
+    for i in range(len(st.session_state.set_madori)):
+        set_madori_value.append(set_madori_list[st.session_state.set_madori[i]])
 
 
-# 検索ボタンが押されるまではこちらの処理 
-if st.session_state.search_button_is_not_pushed :
-    st.write("条件を指定した上で検索ボタンを押してください")
-    
-# 検索ボタンが押された時のみ（filterd_dfにデータが入っている時のみ）実行する   
-else :
-    # 検索結果の表示
-    st.sidebar.write("条件に合う物件は" + str(len(st.session_state.filtered_df)) + "件です")
-    
-    # 検索結果が０件の時の例外処理
-    if len(st.session_state.filtered_df) == 0 :
-        st.write("条件を変えて再度検索をしてください")
-    
-    # 検索結果が１件以上ある時の通常処理
-    else :
-        # 表示する条件を指定する
-        # 一度に表示する物件の数を指定
-        st.session_state.display_number_key = st.sidebar.radio("一度に表示する件数",set_display_number_list.keys())
-        st.session_state.display_number = set_display_number_list[st.session_state.display_number_key]
+    # DBの読み込み
+    df_read = read_db(dbname, st.session_state.set_erea)
 
-        # 表示するページ番号の指定
-        max_page = len(st.session_state.filtered_df) // st.session_state.display_number + 1
-
-        # st.sliderでは最小値＜最大値でないとエラーがでるため、max_page==1の時はsliderを使わない
-        if max_page == 1 :
-            st.sidebar.write("全" + str(len(st.session_state.filtered_df)) + "件を表示します")
-
-        else :
-            st.session_state.display_page = st.sidebar.slider("表示するページ", 1, max_page, 1)
+    # 検索ボタンを押した時だけ条件に合うデータを抽出する
+    if st.sidebar.button("検索", type="primary"):
+        
+        # 検索条件で空のものがあった時の例外処理
+        if st.session_state.set_madori==None or st.session_state.set_erea==None :
+            st.write("条件を指定した上で検索ボタンを押してください")
+        
+        # 通常処理
+        else:
+            # 指定した条件のデータを抽出する
+            st.session_state.filtered_df = filter_df(df_read, set_madori_value, st.session_state.rent_lower_and_upper_limits)
             
-        # 一度に表示する分のデータを抽出
-        displayed_df = display_df(st.session_state.filtered_df, st.session_state.display_number ,st.session_state.display_page )
-
-        # 一覧表示
-        st.write(displayed_df)
-
-        # 指定した物件について詳細な情報を表示する
-        selected_one = st.radio("詳しく知りたい物件の番号を選択してください", displayed_df.index, horizontal=True)
-
-        # 直接リンクを作成
-        st.write(st.session_state.filtered_df.iloc[selected_one]["URL"])
-
-        # foliumを使って地図を表示
-        display_map(st.session_state.filtered_df, displayed_df, selected_one)
+            st.session_state.search_button_is_not_pushed = False
 
 
+    # 検索ボタンが押されるまではこちらの処理 
+    if st.session_state.search_button_is_not_pushed :
+        st.write("条件を指定した上で検索ボタンを押してください")
+        
+    # 検索ボタンが押された時のみ（filterd_dfにデータが入っている時のみ）実行する   
+    else :
+        # 検索結果の表示
+        st.sidebar.subheader("条件に合う物件は" + str(len(st.session_state.filtered_df)) + "件です")
+        
+        # 検索結果が０件の時の例外処理
+        if len(st.session_state.filtered_df) == 0 :
+            st.write("条件を変えて再度検索をしてください")
+        
+        # 検索結果が１件以上ある時の通常処理
+        else :
+            # 表示する条件を指定する
+            # 一度に表示する物件の数を指定
+            st.session_state.display_number_key = st.sidebar.radio("一度に表示する件数",set_display_number_list.keys())
+            st.session_state.display_number = set_display_number_list[st.session_state.display_number_key]
 
+            # 表示するページ番号の指定
+            max_page = len(st.session_state.filtered_df) // st.session_state.display_number + 1
+
+            # st.sliderでは最小値＜最大値でないとエラーがでるため、max_page==1の時はsliderを使わない
+            if max_page == 1 :
+                st.sidebar.write("全" + str(len(st.session_state.filtered_df)) + "件を表示します")
+
+            else :
+                st.session_state.display_page = st.sidebar.slider("表示するページ", 1, max_page, 1)
+                
+            # 一度に表示する分のデータを抽出
+            displayed_df = display_df(st.session_state.filtered_df, st.session_state.display_number ,st.session_state.display_page )
+
+            # 一覧表示
+            st.write(displayed_df[["名前", "賃料", "管理費", "敷金", "礼金", "間取り"]])
+            st.caption("※価格の単位は（万円）です")
+            # st.write(displayed_df)
+
+            # 指定した物件について詳細な情報を表示する
+            selected_one = st.radio("詳しく知りたい物件の番号を選択してください", displayed_df.index, horizontal=True)
+            
+            # 一行だけ取り出して表示させると、どうしても縦に表示されてしまうのでやめた   
+            # st.write(st.session_state.filtered_df.iloc[selected_one][["名前", "賃料", "管理費", "敷金", "礼金", "間取り", "URL"]])
+            
+            # 直接リンクを含む詳細情報の表示
+            # 良い方法が思いつかないので、表示する詳細情報は一つずつ書く
+            df = st.session_state.filtered_df.iloc[selected_one]
+            
+            st.markdown(f"""
+                        **{df["名前"]}**  
+                        URL：{df["URL"]}  
+                        賃料：{df["賃料"]}万円　管理費：{df["管理費"]}万円　（敷金：{df["敷金"]}万円　礼金：{df["礼金"]}万円）  
+                        間取り：{df["間取り"]}　面積：{df["面積"]}m2　　{df["階数"]}／{ df["建物全体の階数"]}　　築年数：{df["築年数"]}年  
+                        最寄り駅１：{df["最寄り駅１"]}  
+                        最寄り駅２：{df["最寄り駅２"]}  
+                        最寄り駅３：{df["最寄り駅３"]}  
+                        """)
+            
+            # foliumを使って地図を表示、選択したものはマーカーの色を変える
+            display_map(st.session_state.filtered_df, displayed_df, selected_one)
+
+
+if __name__ == '__main__':
+    main()
